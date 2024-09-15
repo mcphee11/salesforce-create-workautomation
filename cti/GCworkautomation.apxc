@@ -1,0 +1,63 @@
+global with sharing class GCworkautomation {
+
+    global class WorkAutomationRequests {
+        @InvocableVariable
+        global String assigneeId;
+        @InvocableVariable(required=true)
+        global String workbinId;
+        @InvocableVariable(required=true)
+        global String typeId;
+        @InvocableVariable
+        global Boolean autoStatusTransition;
+        @InvocableVariable(required=true)
+        global String name;
+        @InvocableVariable
+        global String description;
+        @InvocableVariable
+        global Integer priority;
+        @InvocableVariable
+        global String customFields;
+    }
+
+    @InvocableMethod(label='Create WorkItem')
+    public static void createTask(List<WorkAutomationRequests> requests) {
+      System.debug('starting task request');
+        for (WorkAutomationRequests WorkAutomationRequest : requests) {
+            createTaskAPI(WorkAutomationRequest.assigneeId, WorkAutomationRequest.workbinId, WorkAutomationRequest.typeId, WorkAutomationRequest.autoStatusTransition, WorkAutomationRequest.name, WorkAutomationRequest.description, WorkAutomationRequest.priority, WorkAutomationRequest.customFields);
+        }
+    }
+
+    @future(callout=true)
+    public static void createTaskAPI(String assigneeId, String workbinId, String typeId, Boolean autoStatusTransition, String name, String description, Integer priority, String customFields){
+        System.debug('starting api request');
+        
+        Map<String, Object> payload = new Map<String, Object>();
+        payload.put('name', name);
+        payload.put('description', description);
+        payload.put('priority', priority);
+        payload.put('assigneeId', assigneeId);
+        payload.put('workbinId', workbinId);
+        payload.put('autoStatusTransition', autoStatusTransition);
+        payload.put('typeId', typeId);
+        
+        //Build customFields
+        Map<String, Object> customFieldsObject = new Map<String, Object>();
+        if(customFields.length() > 1){
+         List<String> fields = customFields.split(',');
+                for (String str : fields) {
+                    List<String> item = str.split('=');
+                    if(item[0].contains('_integer')){
+                        customFieldsObject.put(item[0], Integer.valueOf(item[1]));
+                    }
+                    else {
+                     customFieldsObject.put(item[0], item[1]);
+                    }
+                }
+            payload.put('customFields', customFieldsObject);
+        }
+
+        System.debug(JSON.serialize(payload));
+        HttpResponse response = purecloud.SDK.Rest.post('/api/v2/taskmanagement/workitems', JSON.serialize(payload));
+        System.debug(response.getBody());
+    }
+}
